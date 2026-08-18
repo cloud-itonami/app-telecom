@@ -25,19 +25,21 @@ CI 設定は無い。
 git ls-files | while read f; do printf "%8d  %s\n" "$(wc -c <"$f")" "$f"; done
 ```
 
+保管対象は 4 ファイル、合計 **27019 バイト**。この 4 つは抽出元のバイト列そのままで、
+サイズは動かない:
+
 ```
      513  NOTICE
-     185  README.edn
     4811  docs/PHASE2-DESIGN.md
-     397  migration.edn          ← :allowed-additions を足したので現在は 397 より大きい
     1496  worker/python/README.md
    20199  worker/python/telecom_worker.py
 ```
 
-抽出時点の 4 ファイル（`NOTICE` + `docs/` + `worker/`）で **27019 バイト**。
-`README.edn` と `migration.edn` が抽出時の追加物、`README.md` /
-`docs/operator-quickstart.md` / `docs/verify-custody.cljs` がこの周の追加物。
-どれが追加物かは `migration.edn` の `:identity :allowed-additions` が持つ。
+残る 5 つ（`README.edn` `migration.edn` `README.md` `docs/operator-quickstart.md`
+`docs/verify-custody.cljs`）は追加物で、`migration.edn` の
+`:identity :allowed-additions` がその 5 つを名指しする。**追加物のサイズはここに
+書かない** —— この文書自身が追加物なので、書いた瞬間に自分を陳腐化させる。
+数えたければ `git ls-files` を実行すること。
 
 **実行されるコードは `worker/python/telecom_worker.py`（526 行）1 本きり。**
 
@@ -67,10 +69,25 @@ PASS — 保管対象 4 ファイルは出所と同一
 確認した（`gh api repos/etzhayyim/root/contents/60-apps?ref=691c245d…`）。
 
 ⚠ **この repo では `docs/` が保管対象と追加物の両方を含む**（`PHASE2-DESIGN.md` は
-出所、他の 2 本は追加）。先行 4 repo の検査器はルート直下のエントリ単位で落として
-いたので、そのままでは `docs` ごと消えて常に FAIL する。ここでは一時 index に
-`read-tree` して追加パスだけを `--force-remove` し `write-tree` する。詳細は
-`docs/verify-custody.cljs` 冒頭。
+出所、他の 2 本は追加）。先行 4 repo（app-roukisho / app-saiban / app-shomeisyashin /
+app-sre）の検査器はルート直下のエントリ単位で落としていたので、ここでは `docs` ごと
+消える。**推測ではなく、app-sre の検査器をこの repo で実際に走らせて確かめた**
+（綴りの違いだけ合わせた一時 `migration.edn` を与えて実行）:
+
+```
+SCANNED	3 保管ファイル / 3 検査
+  FAIL 出所 tree（再構成 vs 記録）
+         got  b6be9c1052e1b6f34cecefe574d47101b09b1707
+         want 28afef665936c0847f6ae359920755ece6548ada
+  FAIL 保管ファイル数   got 3   want 4
+  FAIL 保管バイト数     got 22208   want 27019
+exit=1
+```
+
+`PHASE2-DESIGN.md` を丸ごと見落とすので、**保管対象を 1 つ落としたのと同じ signature**
+（§8 の 2 行目・3 行目と同一）になる。ここでは代わりに一時 index へ `read-tree` して
+追加パスだけを `--force-remove` し `write-tree` する —— パス単位で正確で、working tree と
+本物の index には触らない。詳細は `docs/verify-custody.cljs` 冒頭。
 
 ## §4 CLI を走らせる
 
@@ -220,15 +237,22 @@ registerSpectrumLicense  registerCellSite      registerRanNode   registerNetwork
 recordSiteIncident       scheduleMaintenance   requestRma        auditPerformanceCounters
 ```
 
-出所の `00-contracts/bpmn/com/etzhayyim/telecom/` には telecom BPMN が **142 本**在り、
-この worker が受けるのは **6 本**。一方 worker 側の Phase 2 実装
-（`kotodama.primitives.telecom_resource`）は出所にも無い —— repo 全文検索の唯一の
-hit は `70-tools/config/bpmn-coverage-manifest.json` という一覧で、その一覧が名指しする
-migration のパスは pin した revision で 404 になる（`30-graph/graph-schema/` 自体が
-その時点で別所へ移されている）。
+8 本の実在は、出所ディレクトリを列挙して名前で照合した（`gh api
+repos/etzhayyim/root/contents/00-contracts/bpmn/com/etzhayyim/telecom?ref=691c245d…`）。
+同じ列挙で telecom BPMN は **142 本**在り、この worker が受けるのは **6 本**である。
 
-**「定義は在る、worker は無い」** が現在地。この文書を読んで 8 本の BPMN を
-書き起こす作業を始めない。
+worker 側の Phase 2 実装（`kotodama.primitives.telecom_resource`）については、
+**在ることを確認できなかった**という弱い形でしか言えない: GitHub code search
+（`repo:etzhayyim/root telecom_resource`）の hit は 1 件だけで、それは
+`70-tools/config/bpmn-coverage-manifest.json` という一覧であり実装ではない。さらに
+その一覧が名指しする migration のパスは pin した revision で 404 を返す
+（`30-graph/graph-schema/` 自体がその時点で別所へ移されている）。
+**code search は網羅検索ではないので、これは不在の証明ではない。**
+
+言えるのは **「8 本の BPMN 定義は出所に在る」**（列挙で確認）と
+**「worker 実装は見つからなかった」**（探し方の限界つき）の 2 つ。いずれにせよ、
+この文書を「未着手の計画」と読んで 8 本を書き起こす作業を始めないこと —— まず
+出所側の現在地を確かめる。
 
 ## §8 検査が本当に落ちることを確かめた
 
@@ -238,9 +262,27 @@ migration のパスは pin した revision で 404 になる（`30-graph/graph-s
 | 壊し方 | 結果 |
 |---|---|
 | 保管対象（`NOTICE`）に 1 バイト追記 | **exit 1** — 「保管バイト数」FAIL（27020 ≠ 27019） |
-| 保管対象（`docs/PHASE2-DESIGN.md`）を削除して commit | **exit 1** — tree が `f3cdd5cf…` になり FAIL、ファイル数も 3 ≠ 4 |
-| `:allowed-additions` に `docs/PHASE2-DESIGN.md` を紛れ込ませて迂回 | **exit 1** — 除外した分だけ再構成 tree から消えるので迂回は逆効果 |
+| 保管対象（`docs/PHASE2-DESIGN.md`）を削除して commit | **exit 1** — 3 検査とも FAIL。tree `b6be9c10…` ≠ `28afef66…` / ファイル数 3 ≠ 4 / バイト 22208 ≠ 27019 |
+| `:allowed-additions` に `docs/PHASE2-DESIGN.md` を紛れ込ませて迂回 | **exit 1** — 除外した分だけ再構成 tree から消えるので逆効果。削除した場合と**同じ** 3 FAIL（tree `b6be9c10…` / 3 ≠ 4 / 22208 ≠ 27019）になる |
 | `migration.edn` に 2 つ目のフォームを追記 | **exit 1** — 「トップレベルのフォームが 2 個ある」 |
 | repo の外（`/tmp`）から実行 | **exit 3** — UNDETERMINED（0 でも 1 でもない） |
 
 最後の 1 行が肝心で、**「測れなかった」は「問題なし」と同じ値を返さない**。
+
+## §9 検査器自身が最初は走らなかった
+
+正直に記録しておく。`docs/verify-custody.cljs` は **初稿では 1 度も走らなかった**。
+nbb で実行して見つかった欠陥が 3 つ:
+
+1. `js/process.env` は ClojureScript の map ではないので `merge` が投げた
+2. `js/process.pid` は値であって関数ではないのに `(js/process.pid)` と呼んでいた
+3. `--origin` 分岐を閉じる括弧が 1 個多かった（nbb はフォーム単位で評価するので、
+   先の 2 つを直すまでこの構文誤りは表面化しなかった）
+
+**3 つとも exit 3 か nbb 自身のエラーで終わり、0 は 1 度も返さなかった。**
+これは偶然ではなく、この検査器が「答えられなかった」を専用の値で返すよう
+書いてあるからである。もし初稿が `try` で握り潰して PASS を印字していたら、
+**走っていない検査が緑として着地していた** —— 落ちるより悪い。
+
+だから §8 は必須である。**PASS を見ただけでは、検査したのか、検査できなかったのかを
+区別できない。**
