@@ -59,7 +59,7 @@
   (try
     (str/trim (str (cp/execFileSync "git" (clj->js (vec args))
                                     #js {:encoding "utf8"
-                                         :env (clj->js (merge (js->clj js/process.env) env))})))
+                                         :env (js/Object.assign #js {} js/process.env (clj->js env))})))
     (catch :default e
       (die! 3 "UNDETERMINED: git" (str/join " " args) "が失敗した —"
             (or (some-> e .-message) "(理由不明)")))))
@@ -135,7 +135,7 @@
         ":allowed-additions が全てを覆っている"))
 
 (def ^:private actual-tree
-  (let [idx (path/join (os/tmpdir) (str "verify-custody-" (js/process.pid) ".idx"))
+  (let [idx (path/join (os/tmpdir) (str "verify-custody-" js/process.pid ".idx"))
         env {"GIT_INDEX_FILE" idx}]
     (try
       (when (fs/existsSync idx) (fs/unlinkSync idx))
@@ -183,7 +183,7 @@
                 (die! 3 "UNDETERMINED: 出所に" origin-path "が見つからない"))
               {:what (str "出所 GitHub の実 tree（" origin-repo "@" (subs origin-rev 0 8)
                           ":" origin-path "）")
-               :ok (= sha expected-tree) :got sha :want expected-tree}))))))
+               :ok (= sha expected-tree) :got sha :want expected-tree})))))
 
 (println (str "SCANNED\t" (count preserved-files) " 保管ファイル / "
               (count additions) " 追加物 / " (count results) " 検査"))
