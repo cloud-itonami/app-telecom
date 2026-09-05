@@ -378,6 +378,7 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "voice_units": totals.get("voice", 0.0),
         "sms_units": totals.get("sms", 0.0),
         "data_units": totals.get("data", 0.0),
+        "iot_units": totals.get("iot", 0.0),
         "status": "issued",
         **base_audit(payload),
     }
@@ -387,6 +388,12 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "vertexId": vertex_id,
         "invoiceId": invoice_id,
         "totalAmount": row["total_amount"],
+        "units": {
+            "voice": row["voice_units"],
+            "sms": row["sms_units"],
+            "data": row["data_units"],
+            "iot": row["iot_units"],
+        },
         "status": row["status"],
     }
 
