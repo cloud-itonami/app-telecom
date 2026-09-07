@@ -364,7 +364,10 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
     vertex_id = f"at://did:web:telecom.etzhayyim.com/com.etzhayyim.apps.telecom.invoice/{invoice_id}"
 
     totals = fetch_cdr_aggregates(subscriber_vid, period_start, period_end)
-    total_amount = sum(totals.get(k, 0.0) * RATE_CARD[k] for k in RATE_CARD)
+    # Currency line items per usage type (rate card is cents-per-unit), so the
+    # invoice row is reconcilable to its own total without re-running RATE_CARD.
+    amounts = {k: float(round(totals.get(k, 0.0) * RATE_CARD[k], 4)) for k in RATE_CARD}
+    total_amount = float(round(sum(amounts.values()), 4))
     row = {
         "vertex_id": vertex_id,
         "owner_did": caller_did(payload),
@@ -374,7 +377,11 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),
         "currency": str(payload.get("currency") or "JPY"),
-        "total_amount": round(total_amount, 4),
+        "total_amount": total_amount,
+        "amount_voice": amounts["voice"],
+        "amount_sms": amounts["sms"],
+        "amount_data": amounts["data"],
+        "amount_iot": amounts["iot"],
         "voice_units": totals.get("voice", 0.0),
         "sms_units": totals.get("sms", 0.0),
         "data_units": totals.get("data", 0.0),
@@ -393,6 +400,12 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "sms": row["sms_units"],
             "data": row["data_units"],
             "iot": row["iot_units"],
+        },
+        "amounts": {
+            "voice": row["amount_voice"],
+            "sms": row["amount_sms"],
+            "data": row["amount_data"],
+            "iot": row["amount_iot"],
         },
         "status": row["status"],
     }
