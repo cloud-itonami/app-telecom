@@ -1,4 +1,4 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; verify-custody.cljs — app-telecom の保管検査
 ;;
 ;; この repo は etzhayyim/root からの抽出物である。抽出後に足された記録
@@ -9,8 +9,8 @@
 ;; 通してしまう。git の tree オブジェクトを再構成して migration.edn が記録した
 ;; 出所 tree と突き合わせる。
 ;;
-;;   nbb docs/verify-custody.cljk            # ローカルのみ（network 不要）
-;;   nbb docs/verify-custody.cljk --origin   # 出所 GitHub の実 tree とも突き合わせる
+;;   kbb --backend sci docs/verify-custody.cljk            # ローカルのみ（network 不要）
+;;   kbb --backend sci docs/verify-custody.cljk --origin   # 出所 GitHub の実 tree とも突き合わせる
 ;;
 ;; exit 0 = PASS / 1 = FAIL / 3 = 判定できなかった（0 でも 1 でもない）
 ;;

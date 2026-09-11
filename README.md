@@ -80,8 +80,8 @@ PORT=8080 python3 telecom_worker.py serve  # HTTP LangServer
 ## 保管検査
 
 ```bash
-nbb docs/verify-custody.cljk             # ローカルのみ
-nbb docs/verify-custody.cljk --origin    # 出所 GitHub の実 tree とも突き合わせる
+kbb --backend sci docs/verify-custody.cljk             # ローカルのみ
+kbb --backend sci docs/verify-custody.cljk --origin    # 出所 GitHub の実 tree とも突き合わせる
 ```
 
 exit 0 = PASS / 1 = FAIL / 3 = 判定できなかった。**3 を 0 と混ぜないこと** ——

@@ -46,8 +46,8 @@ git ls-files | while read f; do printf "%8d  %s\n" "$(wc -c <"$f")" "$f"; done
 ## §3 保管を検査する
 
 ```bash
-nbb docs/verify-custody.cljk              # exit 0
-nbb docs/verify-custody.cljk --origin     # exit 0（gh 認証が要る）
+kbb --backend sci docs/verify-custody.cljk              # exit 0
+kbb --backend sci docs/verify-custody.cljk --origin     # exit 0（gh 認証が要る）
 ```
 
 `--origin` 無しで 3 検査、付けて 4 検査。実際の出力:
