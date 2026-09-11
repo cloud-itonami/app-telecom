@@ -36,7 +36,7 @@ git ls-files | while read f; do printf "%8d  %s\n" "$(wc -c <"$f")" "$f"; done
 ```
 
 残る 5 つ（`README.edn` `migration.edn` `README.md` `docs/operator-quickstart.md`
-`docs/verify-custody.cljs`）は追加物で、`migration.edn` の
+`docs/verify-custody.cljk`）は追加物で、`migration.edn` の
 `:identity :allowed-additions` がその 5 つを名指しする。**追加物のサイズはここに
 書かない** —— この文書自身が追加物なので、書いた瞬間に自分を陳腐化させる。
 数えたければ `git ls-files` を実行すること。
@@ -46,8 +46,8 @@ git ls-files | while read f; do printf "%8d  %s\n" "$(wc -c <"$f")" "$f"; done
 ## §3 保管を検査する
 
 ```bash
-nbb docs/verify-custody.cljs              # exit 0
-nbb docs/verify-custody.cljs --origin     # exit 0（gh 認証が要る）
+nbb docs/verify-custody.cljk              # exit 0
+nbb docs/verify-custody.cljk --origin     # exit 0（gh 認証が要る）
 ```
 
 `--origin` 無しで 3 検査、付けて 4 検査。実際の出力:
@@ -87,7 +87,7 @@ exit=1
 `PHASE2-DESIGN.md` を丸ごと見落とすので、**保管対象を 1 つ落としたのと同じ signature**
 （§8 の 2 行目・3 行目と同一）になる。ここでは代わりに一時 index へ `read-tree` して
 追加パスだけを `--force-remove` し `write-tree` する —— パス単位で正確で、working tree と
-本物の index には触らない。詳細は `docs/verify-custody.cljs` 冒頭。
+本物の index には触らない。詳細は `docs/verify-custody.cljk` 冒頭。
 
 ## §4 CLI を走らせる
 
@@ -271,7 +271,7 @@ worker 側の Phase 2 実装（`kotodama.primitives.telecom_resource`）につ�
 
 ## §9 検査器自身が最初は走らなかった
 
-正直に記録しておく。`docs/verify-custody.cljs` は **初稿では 1 度も走らなかった**。
+正直に記録しておく。`docs/verify-custody.cljk` は **初稿では 1 度も走らなかった**。
 nbb で実行して見つかった欠陥が 3 つ:
 
 1. `js/process.env` は ClojureScript の map ではないので `merge` が投げた

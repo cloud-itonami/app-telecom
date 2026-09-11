@@ -10,7 +10,7 @@ Provisioning を 6 つの task type として実装した Python worker 1 本と
 この repo だけでは動かせない**（下記「この repo だけでは動かせないもの」）。
 
 出所は `etzhayyim/root` の `60-apps/etzhayyim-project-telecom`。抽出時の記録は
-`migration.edn`、その記録が今も正しいことは `docs/verify-custody.cljs` が検査する。
+`migration.edn`、その記録が今も正しいことは `docs/verify-custody.cljk` が検査する。
 
 ## 中身（実測 6 ファイル）
 
@@ -80,8 +80,8 @@ PORT=8080 python3 telecom_worker.py serve  # HTTP LangServer
 ## 保管検査
 
 ```bash
-nbb docs/verify-custody.cljs             # ローカルのみ
-nbb docs/verify-custody.cljs --origin    # 出所 GitHub の実 tree とも突き合わせる
+nbb docs/verify-custody.cljk             # ローカルのみ
+nbb docs/verify-custody.cljk --origin    # 出所 GitHub の実 tree とも突き合わせる
 ```
 
 exit 0 = PASS / 1 = FAIL / 3 = 判定できなかった。**3 を 0 と混ぜないこと** ——
