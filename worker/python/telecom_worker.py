@@ -9,6 +9,7 @@ Six task types serve the BPMN actors registered in
 - ``telecom.service.provision``   — opens a service instance with QoS profile
 - ``telecom.usage.record``        — appends a CDR row
 - ``telecom.billing.cycle``       — aggregates CDRs over a period -> invoice
+- ``telecom.payment.record``      — records a payment against an invoice
 - ``telecom.sla.escalate``        — opens an SLA breach + ticket id
 
 The worker only writes graph rows; AT Repo dispatch / federation is left to
@@ -415,6 +416,97 @@ async def telecom_billing_cycle(payload: dict[str, Any] | None = None, **kwargs:
     return billing_cycle_payload(dict(payload or kwargs))
 
 
+def payment_record_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Record a payment against an invoice (eTOM billing/charging collection).
+
+    Idempotent on ``paymentId``: re-recording an existing payment returns the
+    original result without inserting a second row or touching the invoice
+    again. Only an ``issued`` invoice can be settled; a ``paid`` invoice is
+    rejected as a double-settlement.
+    """
+    require(payload, ["invoiceId", "amount"])
+    invoice_id = str(payload["invoiceId"])
+    amount = float(payload["amount"])
+    if amount <= 0:
+        raise ValueError("amount must be positive")
+    method = str(payload.get("method") or "bank_transfer")
+    if method not in {"bank_transfer", "credit_card", "wallet"}:
+        raise ValueError(f"unsupported method: {method}")
+    payment_id = str(payload.get("paymentId") or new_id("pay", invoice_id, amount, method))
+    vertex_id = f"at://did:web:telecom.etzhayyim.com/com.etzhayyim.apps.telecom.payment/{payment_id}"
+    audit = base_audit(payload)
+    now = now_iso()
+
+    if RW_URL:
+        with GraphConnection(str(RW_URL)) as con:
+            existing = con.execute(
+                "SELECT vertex_id, invoice_vid, amount, method, recorded_at, status"
+                " FROM vertex_telecom_payment WHERE payment_id = :pid",
+                {"pid": payment_id},
+            ).fetchone()
+            if existing is not None:
+                return {
+                    "ok": True,
+                    "vertexId": existing["vertex_id"],
+                    "paymentId": payment_id,
+                    "invoiceId": invoice_id,
+                    "amount": float(existing["amount"]),
+                    "method": str(existing["method"]),
+                    "status": str(existing["status"]),
+                    "idempotent": True,
+                }
+            invoice = con.execute(
+                "SELECT vertex_id, total_amount, status FROM vertex_telecom_invoice"
+                " WHERE invoice_id = :iid",
+                {"iid": invoice_id},
+            ).fetchone()
+            if invoice is None:
+                raise ValueError(f"unknown invoiceId: {invoice_id}")
+            if invoice["status"] != "issued":
+                raise ValueError(f"invoice {invoice_id} is {invoice['status']}, not issuable for payment")
+    else:
+        invoice = None
+
+    invoice_vid = (
+        invoice["vertex_id"]
+        if invoice is not None
+        else f"at://did:web:telecom.etzhayyim.com/com.etzhayyim.apps.telecom.invoice/{invoice_id}"
+    )
+    row = {
+        "vertex_id": vertex_id,
+        "owner_did": caller_did(payload),
+        "payment_id": payment_id,
+        "invoice_vid": invoice_vid,
+        "amount": amount,
+        "currency": str(payload.get("currency") or "JPY"),
+        "method": method,
+        "recorded_at": now,
+        "status": "captured",
+        **audit,
+    }
+    maybe_insert("vertex_telecom_payment", row)
+    if RW_URL:
+        with GraphConnection(str(RW_URL)) as con:
+            con.execute(
+                "UPDATE vertex_telecom_invoice SET status = :st, updated_at = :now"
+                " WHERE invoice_id = :iid AND status = 'issued'",
+                {"st": "paid", "now": now, "iid": invoice_id},
+            )
+    return {
+        "ok": True,
+        "vertexId": vertex_id,
+        "paymentId": payment_id,
+        "invoiceId": invoice_id,
+        "amount": amount,
+        "method": method,
+        "status": row["status"],
+    }
+
+
+async def telecom_payment_record(payload: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+    return payment_record_payload(dict(payload or kwargs))
+
+
 def sla_escalate_payload(payload: dict[str, Any]) -> dict[str, Any]:
     require(payload, ["serviceId", "breachType", "severity", "observedAt"])
     severity = str(payload["severity"])
@@ -466,6 +558,7 @@ async def serve() -> None:
         "telecom.service.provision": telecom_service_provision,
         "telecom.usage.record": telecom_usage_record,
         "telecom.billing.cycle": telecom_billing_cycle,
+        "telecom.payment.record": telecom_payment_record,
         "telecom.sla.escalate": telecom_sla_escalate,
     })
 
@@ -476,6 +569,7 @@ COMMANDS = {
     "provision": provision_service_payload,
     "record-usage": record_usage_payload,
     "billing": billing_cycle_payload,
+    "payment": payment_record_payload,
     "escalate": sla_escalate_payload,
 }
 
@@ -522,6 +616,11 @@ def main(argv: list[str]) -> int:
             "periodStart": today_iso(),
             "periodEnd": "2099-12-31",
         })
+        payment = payment_record_payload({
+            "invoiceId": bill["invoiceId"],
+            "amount": bill["totalAmount"] or 1.0,
+            "method": "bank_transfer",
+        })
         sla = sla_escalate_payload({
             "serviceId": svc["serviceId"],
             "breachType": "latency",
@@ -532,7 +631,7 @@ def main(argv: list[str]) -> int:
             "observedAt": now_iso(),
         })
         print(json.dumps(
-            {"onboard": sub, "sim": sim, "service": svc, "cdr": cdr, "billing": bill, "sla": sla},
+            {"onboard": sub, "sim": sim, "service": svc, "cdr": cdr, "billing": bill, "payment": payment, "sla": sla},
             ensure_ascii=False, sort_keys=True,
         ))
         return 0
