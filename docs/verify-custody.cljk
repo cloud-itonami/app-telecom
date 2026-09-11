@@ -9,8 +9,8 @@
 ;; 通してしまう。git の tree オブジェクトを再構成して migration.edn が記録した
 ;; 出所 tree と突き合わせる。
 ;;
-;;   nbb docs/verify-custody.cljs            # ローカルのみ（network 不要）
-;;   nbb docs/verify-custody.cljs --origin   # 出所 GitHub の実 tree とも突き合わせる
+;;   nbb docs/verify-custody.cljk            # ローカルのみ（network 不要）
+;;   nbb docs/verify-custody.cljk --origin   # 出所 GitHub の実 tree とも突き合わせる
 ;;
 ;; exit 0 = PASS / 1 = FAIL / 3 = 判定できなかった（0 でも 1 でもない）
 ;;
@@ -24,7 +24,7 @@
 ;; ── 出所と、先行 4 本との違い ─────────────────────────────────────────────
 ;;
 ;; この検査器は cloud-itonami/app-roukisho・app-saiban・app-shomeisyashin・app-sre の
-;; docs/verify-custody.cljs と同じ役割を果たすが、**この 5 本目だけが 2 点広い**。
+;; docs/verify-custody.cljk と同じ役割を果たすが、**この 5 本目だけが 2 点広い**。
 ;; 先行 4 本にそのまま持っていける superset なので、次にあれらを触るときは
 ;; これを配ること（1 つだけ直る状態を避けるため）:
 ;;
