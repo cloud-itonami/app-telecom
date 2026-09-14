@@ -464,6 +464,12 @@ def payment_record_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 raise ValueError(f"unknown invoiceId: {invoice_id}")
             if invoice["status"] != "issued":
                 raise ValueError(f"invoice {invoice_id} is {invoice['status']}, not issuable for payment")
+            total = float(invoice["total_amount"] or 0.0)
+            if amount > total:
+                raise ValueError(
+                    f"payment {amount} exceeds invoice {invoice_id} total {total};"
+                    " overpayment requires a credit memo, not a payment row"
+                )
     else:
         invoice = None
 
