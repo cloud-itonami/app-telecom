@@ -493,10 +493,20 @@ def payment_record_payload(payload: dict[str, Any]) -> dict[str, Any]:
     maybe_insert("vertex_telecom_payment", row)
     if RW_URL:
         with GraphConnection(str(RW_URL)) as con:
+            # Settlement flips the invoice to 'paid' only when recorded payments
+            # cover the invoice total; a partial payment leaves it collectible.
+            paid_sum = con.execute(
+                "SELECT COALESCE(SUM(amount), 0) AS paid FROM vertex_telecom_payment"
+                " WHERE invoice_vid = :iv AND status = 'captured'",
+                {"iv": invoice_vid},
+            ).fetchone()
+            paid_total = float(paid_sum["paid"]) if paid_sum is not None else 0.0
+            invoice_total = float(invoice["total_amount"]) if invoice is not None else 0.0
+            next_status = "paid" if paid_total >= invoice_total else "issued"
             con.execute(
                 "UPDATE vertex_telecom_invoice SET status = :st, updated_at = :now"
                 " WHERE invoice_id = :iid AND status = 'issued'",
-                {"st": "paid", "now": now, "iid": invoice_id},
+                {"st": next_status, "now": now, "iid": invoice_id},
             )
     return {
         "ok": True,
