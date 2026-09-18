@@ -368,7 +368,12 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
     # Currency line items per usage type (rate card is cents-per-unit), so the
     # invoice row is reconcilable to its own total without re-running RATE_CARD.
     amounts = {k: float(round(totals.get(k, 0.0) * RATE_CARD[k], 4)) for k in RATE_CARD}
-    total_amount = float(round(sum(amounts.values()), 4))
+    # Tax line (e.g. JP consumption tax 0.10); default 0.0 keeps legacy totals.
+    tax_rate = float(payload.get("taxRate") or 0.0)
+    if not 0.0 <= tax_rate <= 1.0:
+        raise ValueError("taxRate must be between 0.0 and 1.0")
+    tax_amount = float(round(sum(amounts.values()) * tax_rate, 4))
+    total_amount = float(round(sum(amounts.values()) + tax_amount, 4))
     row = {
         "vertex_id": vertex_id,
         "owner_did": caller_did(payload),
@@ -379,6 +384,8 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "period_end": period_end.isoformat(),
         "currency": str(payload.get("currency") or "JPY"),
         "total_amount": total_amount,
+        "tax_rate": tax_rate,
+        "tax_amount": tax_amount,
         "amount_voice": amounts["voice"],
         "amount_sms": amounts["sms"],
         "amount_data": amounts["data"],
@@ -396,6 +403,7 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "vertexId": vertex_id,
         "invoiceId": invoice_id,
         "totalAmount": row["total_amount"],
+        "taxAmount": row["tax_amount"],
         "units": {
             "voice": row["voice_units"],
             "sms": row["sms_units"],
