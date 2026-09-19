@@ -180,7 +180,7 @@ worker が要求する 7 つの relation を、実行して捕まえた（`Graph
 | `vertex_telecom_service` | INSERT | 16 |
 | `vertex_telecom_cdr` | INSERT | 17 |
 | `vertex_telecom_cdr` | SELECT（`usage_type` 別 `SUM(units)`） | 束縛 3 |
-| `vertex_telecom_invoice` | INSERT | 18 |
+| `vertex_telecom_invoice` | INSERT | 20（`tax_rate` / `tax_amount` 追加、PR #9） |
 | `vertex_telecom_sla_breach` | INSERT | 17 |
 
 **DB 経路を実際に走らせた検証はしていない。**（この機械に Postgres /
