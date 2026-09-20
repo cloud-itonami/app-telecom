@@ -10,6 +10,7 @@ Six task types serve the BPMN actors registered in
 - ``telecom.usage.record``        — appends a CDR row
 - ``telecom.billing.cycle``       — aggregates CDRs over a period -> invoice
 - ``telecom.payment.record``      — records a payment against an invoice
+- ``telecom.payment.refund``       — records a refund (credit memo) against an invoice
 - ``telecom.sla.escalate``        — opens an SLA breach + ticket id
 
 The worker only writes graph rows; AT Repo dispatch / federation is left to
@@ -531,6 +532,110 @@ async def telecom_payment_record(payload: dict[str, Any] | None = None, **kwargs
     return payment_record_payload(dict(payload or kwargs))
 
 
+def payment_refund_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Record a refund (credit memo) against an invoice (eTOM billing/charging collection).
+
+    Landing path for the payment-record overpayment guard: a refund row is
+    stored as a negative-amount payment with method ``refund`` and status
+    ``captured``, so the settlement coverage sum decreases naturally; an
+    invoice that drops below its total flips back to ``issued``
+    (collectible again). Idempotent on ``refundId``.
+    """
+    require(payload, ["invoiceId", "amount"])
+    invoice_id = str(payload["invoiceId"])
+    amount = float(payload["amount"])
+    if amount <= 0:
+        raise ValueError("refund amount must be positive")
+    refund_id = str(payload.get("refundId") or new_id("ref", invoice_id, amount))
+    vertex_id = f"at://did:web:telecom.etzhayyim.com/com.etzhayyim.apps.telecom.payment/{refund_id}"
+    audit = base_audit(payload)
+    now = now_iso()
+
+    if RW_URL:
+        with GraphConnection(str(RW_URL)) as con:
+            existing = con.execute(
+                "SELECT vertex_id, amount, status FROM vertex_telecom_payment WHERE payment_id = :pid",
+                {"pid": refund_id},
+            ).fetchone()
+            if existing is not None:
+                return {
+                    "ok": True,
+                    "vertexId": existing["vertex_id"],
+                    "refundId": refund_id,
+                    "invoiceId": invoice_id,
+                    "amount": float(existing["amount"]),
+                    "status": str(existing["status"]),
+                    "idempotent": True,
+                }
+            invoice = con.execute(
+                "SELECT vertex_id, total_amount FROM vertex_telecom_invoice"
+                " WHERE invoice_id = :iid",
+                {"iid": invoice_id},
+            ).fetchone()
+            if invoice is None:
+                raise ValueError(f"unknown invoiceId: {invoice_id}")
+            captured = con.execute(
+                "SELECT COALESCE(SUM(amount), 0) AS net FROM vertex_telecom_payment"
+                " WHERE invoice_vid = :iv AND status = 'captured'",
+                {"iv": invoice["vertex_id"]},
+            ).fetchone()
+            net = float(captured["net"]) if captured is not None else 0.0
+            if amount > net:
+                raise ValueError(
+                    f"refund {amount} exceeds net captured payments {net}"
+                    f" on invoice {invoice_id}")
+    else:
+        invoice = None
+
+    invoice_vid = (
+        invoice["vertex_id"]
+        if invoice is not None
+        else f"at://did:web:telecom.etzhayyim.com/com.etzhayyim.apps.telecom.invoice/{invoice_id}"
+    )
+    row = {
+        "vertex_id": vertex_id,
+        "owner_did": caller_did(payload),
+        "payment_id": refund_id,
+        "invoice_vid": invoice_vid,
+        "amount": -amount,
+        "currency": str(payload.get("currency") or "JPY"),
+        "method": "refund",
+        "recorded_at": now,
+        "status": "captured",
+        **audit,
+    }
+    maybe_insert("vertex_telecom_payment", row)
+    if RW_URL:
+        with GraphConnection(str(RW_URL)) as con:
+            paid_sum = con.execute(
+                "SELECT COALESCE(SUM(amount), 0) AS paid FROM vertex_telecom_payment"
+                " WHERE invoice_vid = :iv AND status = 'captured'",
+                {"iv": invoice_vid},
+            ).fetchone()
+            paid_total = float(paid_sum["paid"]) if paid_sum is not None else 0.0
+            invoice_total = float(invoice["total_amount"]) if invoice is not None else 0.0
+            next_status = "paid" if (invoice_total > 0 and paid_total >= invoice_total) else "issued"
+            con.execute(
+                "UPDATE vertex_telecom_invoice SET status = :st, updated_at = :now"
+                " WHERE invoice_id = :iid",
+                {"st": next_status, "now": now, "iid": invoice_id},
+            )
+    return {
+        "ok": True,
+        "vertexId": vertex_id,
+        "refundId": refund_id,
+        "invoiceId": invoice_id,
+        "amount": -amount,
+        "method": "refund",
+        "status": row["status"],
+    }
+
+
+async def telecom_payment_refund(payload: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+    return payment_refund_payload(dict(payload or kwargs))
+
+
+
 def sla_escalate_payload(payload: dict[str, Any]) -> dict[str, Any]:
     require(payload, ["serviceId", "breachType", "severity", "observedAt"])
     severity = str(payload["severity"])
@@ -583,6 +688,7 @@ async def serve() -> None:
         "telecom.usage.record": telecom_usage_record,
         "telecom.billing.cycle": telecom_billing_cycle,
         "telecom.payment.record": telecom_payment_record,
+        "telecom.payment.refund": telecom_payment_refund,
         "telecom.sla.escalate": telecom_sla_escalate,
     })
 
@@ -594,6 +700,7 @@ COMMANDS = {
     "record-usage": record_usage_payload,
     "billing": billing_cycle_payload,
     "payment": payment_record_payload,
+    "refund": payment_refund_payload,
     "escalate": sla_escalate_payload,
 }
 
