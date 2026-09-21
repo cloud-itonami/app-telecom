@@ -617,7 +617,7 @@ def payment_refund_payload(payload: dict[str, Any]) -> dict[str, Any]:
             next_status = "paid" if (invoice_total > 0 and paid_total >= invoice_total) else "issued"
             con.execute(
                 "UPDATE vertex_telecom_invoice SET status = :st, updated_at = :now"
-                " WHERE invoice_id = :iid",
+                " WHERE invoice_id = :iid AND status IN ('issued', 'paid')",
                 {"st": next_status, "now": now, "iid": invoice_id},
             )
     return {
