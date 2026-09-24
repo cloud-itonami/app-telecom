@@ -1,0 +1,26 @@
+{
+  "jobs": [
+    {
+      "base_url": null,
+      "context_from": null,
+      "deliver": "local",
+      "enabled": true,
+      "enabled_toolsets": null,
+      "id": "c9c30f472c4d",
+      "model": "qwen3.8-27b-whitehacker",
+      "name": "tsuushin-daily",
+      "no_agent": false,
+      "prompt": "SOUL.md no loop wo 1 hanshu jikko seyo. observe -> evaluate -> decide -> act(propose/PR) -> record-evidence. 1 hanshu = 1 finding. Report format: taisho corpus / tsuika datoms su / daicho seq / ijo no u",
+      "provider": "kotoba",
+      "schedule": {
+        "kind": "cron",
+        "expr": "40 11 * * *",
+        "display": "40 11 * * *"
+      },
+      "script": null,
+      "skill": null,
+      "skills": [],
+      "workdir": null
+    }
+  ]
+}
