@@ -1,7 +1,7 @@
 # app-telecom
 
 **`cloud-itonami/app-telecom` は、通信事業者の eTOM Customer + Service
-Provisioning を 6 つの task type として実装した Python worker 1 本と、その
+Provisioning を 8 つの task type として実装した Python worker 1 本と、その
 設計文書を保管する repo である。**
 
 名前が示すより狭い。ここに在るのは **worker の実装だけ**で、それを呼ぶ BPMN
@@ -16,7 +16,7 @@ Provisioning を 6 つの task type として実装した Python worker 1 本と
 
 | パス | 何か |
 |---|---|
-| `worker/python/telecom_worker.py` | 実装の全部（526 行）。6 task type + CLI + HTTP サーバ |
+| `worker/python/telecom_worker.py` | 実装の全部（776 行）。8 task type + CLI + HTTP サーバ |
 | `worker/python/README.md` | 6 task type と NSID / BPMN の対応表 |
 | `docs/PHASE2-DESIGN.md` | Phase 2（Resource: RAN/spectrum/inventory）の**提案**。実装は無い |
 | `NOTICE` | Apache-2.0 + etzhayyim Charter Compliance Rider v3.1 |
@@ -24,7 +24,7 @@ Provisioning を 6 つの task type として実装した Python worker 1 本と
 
 `worker/python/telecom_worker.py` 以外に実行されるコードは無い。
 
-## 6 task type
+## 8 task type
 
 | task type | CLI 副コマンド | 書く table |
 |---|---|---|
@@ -33,6 +33,8 @@ Provisioning を 6 つの task type として実装した Python worker 1 本と
 | `telecom.service.provision` | `provision` | `vertex_telecom_service` |
 | `telecom.usage.record` | `record-usage` | `vertex_telecom_cdr` |
 | `telecom.billing.cycle` | `billing` | `vertex_telecom_invoice`（+ `vertex_telecom_cdr` を SELECT） |
+| `telecom.payment.record` | `payment` | `vertex_telecom_invoice`（settlement UPDATE; PR #11） |
+| `telecom.payment.refund` | `refund` | `vertex_telecom_invoice`（settlement UPDATE; PR #11） |
 | `telecom.sla.escalate` | `escalate` | `vertex_telecom_sla_breach` |
 
 PII は 2 行に割れている（ADR-0018）。`vertex_telecom_subscriber` は
