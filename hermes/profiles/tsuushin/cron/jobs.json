@@ -7,11 +7,11 @@
       "enabled": true,
       "enabled_toolsets": null,
       "id": "c9c30f472c4d",
-      "model": "qwen3.8-27b-whitehacker",
+      "model": "murakumo/free",
       "name": "tsuushin-daily",
       "no_agent": false,
       "prompt": "SOUL.md no loop wo 1 hanshu jikko seyo. observe -> evaluate -> decide -> act(propose/PR) -> record-evidence. 1 hanshu = 1 finding. Report format: taisho corpus / tsuika datoms su / daicho seq / ijo no u",
-      "provider": "kotoba",
+      "provider": "murakumo",
       "schedule": {
         "kind": "cron",
         "expr": "40 11 * * *",
