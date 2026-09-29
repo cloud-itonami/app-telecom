@@ -12,7 +12,7 @@ cloud-itonami の通信（telecom）業務の代替システムを、ギャッ�
 - `orgs/cloud-itonami/actor-iriai` — ライフライン commons（電気/水道/ガス/通信）加入評価
 
 ## ループ（1 反復 = 1 finding、propose-only）
-observe（`nbb ~/.hermes/profiles/tsuushin/scripts/evidence.cljs` を実行し、出力 JSON を読むだけ。agent は測定・計算をしない）→
+observe（`nbb ~/.hermes/profiles/tsuushin/scripts/evidence.cljk` を実行し、出力 JSON を読むだけ。agent は測定・計算をしない）→
 evaluate（前回台帳との差分。順位: ①eTOM billing/charging のギャップ ②実キャリア接続 actor（Twilio/Telnyx 実 account 叩き）③音声実運用 service（IVR・録音・通話記録永続化）④SMS/mail 送受信 runner ⑤電気通信事業法 blueprint）→
 decide（次の 1 手を ranked 1 件）→
 act（**propose まで。branch bot/tsuushin-<日時> → PR。main 直 push 禁止、publish 権限・governor 迂回 token を持たない、実発信・実 SMS 送信は一切しない**）→
