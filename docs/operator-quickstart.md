@@ -136,9 +136,11 @@ python3 telecom_worker.py refund '{"invoiceId":"inv_demo_s16","refundId":"ref_de
 # {"amount": -5.0, ..., "refundId": "ref_demo_s16", "status": "captured", ...}
 ```
 
-- 支払いは **負帳票（refund）として実装**: refund は `method:"refund"` の
-  amount 負の payment 行。`refundId` で冪等（同一 id の 2 回目も `ok:true`、
-  同一 `paymentId`/`vertexId`、重複行は増えない）。
+- 返金は **負帳票（refund）として実装**: refund は `method:"refund"` の
+  amount 負の payment 行。`RW_URL` 有りのときは `refundId` で既存行を照会し、
+  同一 id の 2 回目も `ok:true`、同一 `refundId`/`vertexId` を返す
+  （`idempotent:true`、重複行は増えない）。オフラインでは永続化も重複照会も
+  行わないため、この実測だけで再実行の冪等性を保証できない。
 - `RW_URL` 有りのときは合計カバー判定が走る: captured 支払い合計が
   `total_amount` に届けば `issued`→`paid`、部分支払いのまま `issued`（PR #8/#11）。
   ただし**オフラインでは判定できない**: 上記 `refund` amount 999.0 の過剰refundも
