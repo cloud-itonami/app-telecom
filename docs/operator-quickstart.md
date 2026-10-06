@@ -123,6 +123,33 @@ python3 telecom_worker.py activate-sim '{"iccid":"8981000123456789012","subscrib
 検証に落ちると **exit 1**（実測 3 種: 必須項目欠落 / 未対応 `serviceType` /
 負の `units`）。
 
+### 精算 —— payment と refund（2026-10-06 実測、PR #11 で入った 2 task type）
+
+tool 名は `telecom.payment.record` / `telecom.payment.refund`（dispatch は 8 種）。
+CLI ではそれぞれ `payment` / `refund` サブコマンド。オフライン（`RW_URL` 無し）実測:
+
+```bash
+python3 telecom_worker.py payment '{"invoiceId":"inv_demo_s16","amount":50.0,"method":"bank_transfer"}'
+# {"amount": 50.0, "invoiceId": "inv_demo_s16", "method": "bank_transfer", "ok": true,
+#  "paymentId": "pay_…", "status": "captured", "vertexId": "at://…payment/pay_…"}
+python3 telecom_worker.py refund '{"invoiceId":"inv_demo_s16","refundId":"ref_demo_s16","amount":5.0}'
+# {"amount": -5.0, ..., "refundId": "ref_demo_s16", "status": "captured", ...}
+```
+
+- 返金は **負帳票（refund）として実装**: refund は `method:"refund"` の
+  amount 負の payment 行。`RW_URL` 有りのときは `refundId` で既存行を照会し、
+  同一 id の 2 回目も `ok:true`、同一 `refundId`/`vertexId` を返す
+  （`idempotent:true`、重複行は増えない）。オフラインでは永続化も重複照会も
+  行わないため、この実測だけで再実行の冪等性を保証できない。
+- `RW_URL` 有りのときは合計カバー判定が走る: captured 支払い合計が
+  `total_amount` に届けば `issued`→`paid`、部分支払いのまま `issued`（PR #8/#11）。
+  ただし**オフラインでは判定できない**: 上記 `refund` amount 999.0 の過剰refundも
+  オフラインでは `ok:true` で通る（`RW_URL` 経路の検証が動かないだけ）。
+- 落ちる実測 3 種（いずれも **exit 1**）: `invoiceId` 欠落 →
+  `ValueError: missing required field(s): invoiceId` / 負の `amount` →
+  `amount must be positive` / 未対応 `method` → `unsupported method: crypto`。
+  CLI 経路では stderr に traceback、exit 1。
+
 ## §5 HTTP サーバを走らせる
 
 ```bash
