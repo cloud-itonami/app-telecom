@@ -108,11 +108,12 @@ python3 telecom_worker.py dry-run        # exit 0
 
 **再現しない値**:
 
-- `cdr_…` と `brc_…` / `tkt_…` — id が実行時刻から作られる。1.2 秒空けて 2 回
+- `cdr_…` と `brc_…` / `tkt_…` — id が実行時刻から作られる。同じ日に 1.2 秒空けて 2 回
   走らせると 7 段中この 2 段だけが変わる（5 段は同一）。
 - `inv_…` — **日付が入るので日ごとに変わる**。2026-08-18 は
   `inv_4eacdb40694e6b04c7b5d422`、8-19 は `inv_f1424f2995b0243554e3d96a`、
   8-20 は `inv_34f6a295628eb9d79d38b395`。定数として引用しないこと。
+  `pay_…` も invoiceId から作られるので、この日付変更に従う。
 
 個別に呼ぶ形:
 
@@ -165,7 +166,7 @@ PORT=18080 python3 telecom_worker.py serve &
 | 要求 | 結果 |
 |---|---|
 | `GET /healthz` | 200 `{"ok":true,"runtimeKind":"k8s-langserver","agentGatewayMcpUrl":"http://agentgateway-mcp.mitama-udf.svc.cluster.local:8080"}` |
-| `GET /tools` | 200、8 件（`telecom.billing.cycle` … `telecom.sla.escalate`） |
+| `GET /tools` | 200、8 件（名前順で `telecom.billing.cycle` … `telecom.usage.record`） |
 | `GET /nope` | 404 `{"error":"not found"}` |
 | `POST` 正常 (`telecom.sim.activate`) | 200。`simId` は §4 の CLI と**同一**の `sim_eb96b8a1301312112678c972` |
 | `POST` 未知の tool | 404 `{"error":"unknown tool: telecom.nope"}` |
