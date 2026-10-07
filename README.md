@@ -17,7 +17,7 @@ Provisioning を 8 つの task type として実装した Python worker 1 本と
 | パス | 何か |
 |---|---|
 | `worker/python/telecom_worker.py` | 実装の全部（776 行）。8 task type + CLI + HTTP サーバ |
-| `worker/python/README.md` | 6 task type と NSID / BPMN の対応表 |
+| `worker/python/README.md` | 8 task type と NSID / BPMN の対応表 |
 | `docs/PHASE2-DESIGN.md` | Phase 2（Resource: RAN/spectrum/inventory）の**提案**。実装は無い |
 | `NOTICE` | Apache-2.0 + etzhayyim Charter Compliance Rider v3.1 |
 | `README.edn` / `migration.edn` | 機械可読の repo 記録・抽出記録 |
@@ -45,7 +45,7 @@ PII は 2 行に割れている（ADR-0018）。`vertex_telecom_subscriber` は
 
 ```bash
 cd worker/python
-python3 telecom_worker.py dry-run          # 6 段を通す。DB 不要。exit 0
+python3 telecom_worker.py dry-run          # 7 段を通す。DB 不要。exit 0
 PORT=8080 python3 telecom_worker.py serve  # HTTP LangServer
 ```
 

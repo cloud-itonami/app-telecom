@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Zeebe worker for telecom Phase 1 (eTOM Customer + Service Provisioning).
 
-Six task types serve the BPMN actors registered in
+Eight task types extend the BPMN actors registered in
 ``20260427090100_seed_telecom_bpmn_actors.ts``:
 
 - ``telecom.subscriber.onboard``  — creates subscriber + Tier-3 PII split

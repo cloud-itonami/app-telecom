@@ -13,6 +13,12 @@ eTOM Customer + Service Provisioning core (ADR-0056 BPMN-as-actor, Wave: telecom
 | `telecom.billing.cycle` | `com.etzhayyim.apps.telecom.runBillingCycle` | `runBillingCycle.bpmn` |
 | `telecom.sla.escalate` | `com.etzhayyim.apps.telecom.escalateSlaBreach` | `escalateSlaBreach.bpmn` |
 
+追加の 2 task type は `telecom.payment.record`（CLI `payment`）と
+`telecom.payment.refund`（CLI `refund`）。どちらも
+`com.etzhayyim.apps.telecom.payment` リソースに支払／返金を記録し、請求の
+精算状態を更新する。この repo には対応する操作 NSID／BPMN の定義はない。
+登録される task type は合計 8 種、`dry-run` は refund を含まない 7 段。
+
 ## Run
 
 ```bash
