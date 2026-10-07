@@ -96,7 +96,7 @@ cd worker/python
 python3 telecom_worker.py dry-run        # exit 0
 ```
 
-6 段（onboard → SIM → service → CDR → billing → SLA）を通す。DB は要らない。
+7 段（onboard → SIM → service → CDR → billing → payment → SLA）を通す。DB は要らない。
 
 **再現する値**（入力が固定なので id が入力の sha256 から決まる）:
 
@@ -109,7 +109,7 @@ python3 telecom_worker.py dry-run        # exit 0
 **再現しない値**:
 
 - `cdr_…` と `brc_…` / `tkt_…` — id が実行時刻から作られる。1.2 秒空けて 2 回
-  走らせると 6 段中この 2 段だけが変わる（4 段は同一）。
+  走らせると 7 段中この 2 段だけが変わる（5 段は同一）。
 - `inv_…` — **日付が入るので日ごとに変わる**。2026-08-18 は
   `inv_4eacdb40694e6b04c7b5d422`、8-19 は `inv_f1424f2995b0243554e3d96a`、
   8-20 は `inv_34f6a295628eb9d79d38b395`。定数として引用しないこと。
@@ -165,7 +165,7 @@ PORT=18080 python3 telecom_worker.py serve &
 | 要求 | 結果 |
 |---|---|
 | `GET /healthz` | 200 `{"ok":true,"runtimeKind":"k8s-langserver","agentGatewayMcpUrl":"http://agentgateway-mcp.mitama-udf.svc.cluster.local:8080"}` |
-| `GET /tools` | 200、6 件（`telecom.billing.cycle` … `telecom.usage.record`） |
+| `GET /tools` | 200、8 件（`telecom.billing.cycle` … `telecom.sla.escalate`） |
 | `GET /nope` | 404 `{"error":"not found"}` |
 | `POST` 正常 (`telecom.sim.activate`) | 200。`simId` は §4 の CLI と**同一**の `sim_eb96b8a1301312112678c972` |
 | `POST` 未知の tool | 404 `{"error":"unknown tool: telecom.nope"}` |
@@ -221,7 +221,7 @@ RisingWave が無く、DDL も repo に無い。）踏めなかったことを�
 ### (a) `dry-run` の請求額は常に 0.0
 
 `fetch_cdr_aggregates` は `RW_URL` が無いと全ゼロを返す。つまり dry-run が 4 段目で
-記録した 1 MiB は 5 段目の請求に載らない。**6 段が繋がって見えて、1 箇所切れている。**
+記録した 1 MiB は 5 段目の請求に載らない。**7 段が繋がって見えて、1 箇所切れている。**
 
 集計値だけ差し込んで料金表の算術を測ると（`RATE_CARD` = voice 0.02/秒・sms 0.05/通・
 data 1e-08/バイト・iot 0.001/件）:
