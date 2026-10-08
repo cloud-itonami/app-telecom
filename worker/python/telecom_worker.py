@@ -25,6 +25,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -366,9 +367,25 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
     vertex_id = f"at://did:web:telecom.etzhayyim.com/com.etzhayyim.apps.telecom.invoice/{invoice_id}"
 
     totals = fetch_cdr_aggregates(subscriber_vid, period_start, period_end)
+    # Optional per-cycle rate plan override: keys must be RATE_CARD usage
+    # types, values non-negative. Omitted keys keep the global rate.
+    rate_card = dict(RATE_CARD)
+    override = payload.get("rateCard")
+    if override is not None:
+        if not isinstance(override, dict):
+            raise ValueError("rateCard must be an object of usageType -> rate")
+        for key, value in override.items():
+            if key not in rate_card:
+                raise ValueError(f"unsupported rateCard key: {key}")
+            if isinstance(value, bool):
+                raise ValueError(f"rateCard[{key}] must be a number")
+            value = float(value)
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"rateCard[{key}] must be a finite non-negative number")
+            rate_card[key] = value
     # Currency line items per usage type (rate card is cents-per-unit), so the
     # invoice row is reconcilable to its own total without re-running RATE_CARD.
-    amounts = {k: float(round(totals.get(k, 0.0) * RATE_CARD[k], 4)) for k in RATE_CARD}
+    amounts = {k: float(round(totals.get(k, 0.0) * rate_card[k], 4)) for k in rate_card}
     # Tax line (e.g. JP consumption tax 0.10); default 0.0 keeps legacy totals.
     tax_rate = float(payload.get("taxRate") or 0.0)
     if not 0.0 <= tax_rate <= 1.0:
