@@ -25,6 +25,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -376,9 +377,11 @@ def billing_cycle_payload(payload: dict[str, Any]) -> dict[str, Any]:
         for key, value in override.items():
             if key not in rate_card:
                 raise ValueError(f"unsupported rateCard key: {key}")
+            if isinstance(value, bool):
+                raise ValueError(f"rateCard[{key}] must be a number")
             value = float(value)
-            if value < 0:
-                raise ValueError(f"rateCard[{key}] must be non-negative")
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"rateCard[{key}] must be a finite non-negative number")
             rate_card[key] = value
     # Currency line items per usage type (rate card is cents-per-unit), so the
     # invoice row is reconcilable to its own total without re-running RATE_CARD.
